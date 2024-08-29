@@ -7,7 +7,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   runApp(const MyApp());
-}
+} //test
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -27,9 +27,7 @@ class MyApp extends StatelessWidget {
       fallbackLocale: Locale('en', 'UK'),
       defaultTransition: Transition.noTransition,
       debugShowCheckedModeBanner: false,
-
       home: AnalizView(),
     );
   }
 }
-
