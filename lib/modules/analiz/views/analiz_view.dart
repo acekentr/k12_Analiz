@@ -8,6 +8,7 @@ import 'package:k12_analiz/modules/analiz/controllers/derslik_list_controller.da
 import 'package:k12_analiz/modules/analiz/controllers/kilitli_hucre_list_controller.dart';
 import 'package:k12_analiz/modules/analiz/controllers/sinav_list_controller.dart';
 import 'package:k12_analiz/modules/analiz/controllers/zaman_list_controller.dart';
+import 'package:k12_analiz/modules/analiz/models/derslik_model.dart';
 import 'package:k12_analiz/modules/analiz/models/id_adi_model.dart';
 import 'package:k12_analiz/modules/analiz/models/kilitli_hucre_model.dart';
 import 'package:k12_analiz/modules/analiz/models/sinav_model.dart';
@@ -30,7 +31,7 @@ final KilitliHucreListController kilitliHucreListController = Get.put(KilitliHuc
 class _AnalizViewState extends State<AnalizView> {
 
   final TextEditingController textEditingController = TextEditingController();
-  RxList<IdAdi> filteredDerslikList = <IdAdi>[].obs;
+  RxList<DerslikModel> filteredDerslikList = <DerslikModel>[].obs;
 
   @override
   void initState() {
@@ -396,6 +397,15 @@ class _AnalizViewState extends State<AnalizView> {
                                                   kilitliHucre.zamanId == yeniHucre.zamanId &&
                                                   kilitliHucre.periyotId == yeniHucre.periyotId
                                                 );
+
+                                                var selectedDerslik = derslikListController.dataList.firstWhere((d) => d.id == derslik.id);
+                                                  if (model.ogrenci != null && model.ogrenci!.length > selectedDerslik.kapasite!) {
+                                                    DialogWidget.buildShowAlertDialog(
+                                                      title: "Ekleme Başarısız",
+                                                      text: "${selectedDerslik.adi} adlı derslikte ${selectedDerslik.kapasite!} öğrenci kapasitesi bulunmaktadır.\nEklemeye çalıştığınız sınavda ${model.ogrenci!.length} öğrenci bulunduğu için ekleme yapılamaz."
+                                                    );
+                                                    return;
+                                                  }
                 
                                                 if (ogrenciVar) {
                                                   DialogWidget.buildShowAlertDialog(
