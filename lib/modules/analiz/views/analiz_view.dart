@@ -476,7 +476,6 @@ class _AnalizViewState extends State<AnalizView> {
     );
   }
 
-
   Widget buildSinavHucreAlan(Hucre model) {
     final List<KilitliHucreModel> kilitliCells = kilitliHucreListController.dataList;
 
@@ -502,56 +501,64 @@ class _AnalizViewState extends State<AnalizView> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Expanded(
-          child: Draggable<SinavModel>(
-            data: sinavList.isNotEmpty ? sinavList.first : null,
-            onDragStarted: () {
-              setState(() {
-                for (var sinav in sinavList) {
+        // Eğer hücre kilitli ise burada gösteriyoruz.
+        if (kilitli)
+          Expanded(
+            child: Container(
+              alignment: Alignment.center,
+              color: Colors.red,
+              child: const  Text(
+                "Kilitli",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+
+        // Kilitli değilse ve hücrede atanmış sınavlar varsa burada gösteriyoruz.
+        ...sinavList.map((sinav) {
+          return Expanded(
+            child: Draggable<SinavModel>(
+              data: sinav,
+              onDragStarted: () {
+                setState(() {
                   sinav.hucre?.removeWhere((e) =>
                     e.zamanId == model.zamanId &&
                     e.derslikId == model.derslikId &&
                     e.periyotId == model.periyotId
                   );
-                }
-              });
-            },
-            feedback: Material(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                color: Color(int.parse('0xFF${sinavList.isNotEmpty ? sinavList.first.renk : 'FFFFFF'}')),
+                });
+              },
+              feedback: Material(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  color: Color(int.parse('0xFF${sinav.renk}')),
+                  child: Text(sinav.adi ?? "", style: const TextStyle(color: Colors.white)),
+                ),
+              ),
+              childWhenDragging: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                ),
                 child: Text(
-                  sinavList.isNotEmpty ? sinavList.first.adi ?? "" : "",
-                  style: const TextStyle(color: Colors.white),
+                  sinav.adi ?? "",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+              child: Container(
+                alignment: Alignment.center,
+                color: kilitli ? Colors.red : Color(int.parse('0xFF${sinav.renk}')),
+                child: Text(
+                  sinav.adi ?? "",
+                  style: TextStyle(color: invert(Color(int.parse('0xFF${sinav.renk}')))),
                 ),
               ),
             ),
-            childWhenDragging: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-              ),
-              child: Text(
-                sinavList.isNotEmpty ? sinavList.first.adi ?? "" : "",
-                style: const TextStyle(color: Colors.grey),
-              ),
-            ),
-            child: Container(
-              alignment: Alignment.center,
-              color: kilitli ? Colors.red : Color(int.parse('0xFF${sinavList.isNotEmpty ? sinavList.first.renk : 'FFFFFF'}')),
-              child: Text(
-                kilitli ? "Kilitli"
-                : sinavList.isNotEmpty ? sinavList.first.adi ?? "" : "",
-                style: TextStyle(color: kilitli ? Colors.white : invert(Color(int.parse('0xFF${sinavList.isNotEmpty ? sinavList.first.renk : 'FFFFFF'}')))),
-              ),
-            ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
-
-
 
 
   Color invert(Color color) {
