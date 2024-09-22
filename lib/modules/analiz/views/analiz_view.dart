@@ -1,55 +1,79 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:k12_analiz/constants/custom_form_decoration.dart';
 import 'package:k12_analiz/constants/widget_style.dart';
 import 'package:k12_analiz/general_setting.dart';
-import 'package:k12_analiz/modules/analiz/controllers/derslik_list_controller.dart';
-import 'package:k12_analiz/modules/analiz/controllers/kilitli_hucre_list_controller.dart';
-import 'package:k12_analiz/modules/analiz/controllers/sinav_list_controller.dart';
-import 'package:k12_analiz/modules/analiz/controllers/zaman_list_controller.dart';
-import 'package:k12_analiz/modules/analiz/models/derslik_model.dart';
+import 'package:k12_analiz/modules/analiz/forms/ogrenciler_list_form.dart';
+import 'package:k12_analiz/modules/analiz/forms/ogretmenler_list_form.dart';
+import 'package:k12_analiz/modules/analiz/models/hucre_model.dart';
 import 'package:k12_analiz/modules/analiz/models/id_adi_model.dart';
-import 'package:k12_analiz/modules/analiz/models/kilitli_hucre_model.dart';
-import 'package:k12_analiz/modules/analiz/models/sinav_model.dart';
-import 'package:k12_analiz/services/form_routers.dart';
+import 'package:k12_analiz/modules/analiz/models/zaman_model.dart';
 import 'package:k12_analiz/widgets/dialog/dialog_widget.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 
 class AnalizView extends StatefulWidget {
-  const AnalizView({super.key});
+  final Future<RxList<dynamic>> Function() getOgrenciListFunc;
+  final Future<RxList<dynamic>> Function() getOgrenciBlokZamanListFunc;
+  final Future<RxList<dynamic>> Function() getOgretmenListFunc;
+  final dynamic sinavBilgi;
+  final RxList<dynamic> derslikList;
+  final RxList<dynamic> derslikBlokZamanList;
+  final RxList<dynamic> sorumluDerslerList;
+
+  const AnalizView({
+    super.key,
+    required this.getOgrenciListFunc,
+    required this.getOgrenciBlokZamanListFunc,
+    required this.getOgretmenListFunc,
+    required this.sinavBilgi,
+    required this.derslikList,
+    required this.derslikBlokZamanList,
+    required this.sorumluDerslerList,
+  });
 
   @override
   State<AnalizView> createState() => _AnalizViewState();
 }
 
-final SinavListController sinavListController = Get.put(SinavListController());
-final ZamanListController zamanListController = Get.put(ZamanListController());
-final DerslikListController derslikListController = Get.put(DerslikListController());
-final KilitliHucreListController kilitliHucreListController = Get.put(KilitliHucreListController());
-
 class _AnalizViewState extends State<AnalizView> {
 
   final TextEditingController textEditingController = TextEditingController();
-  RxList<DerslikModel> filteredDerslikList = <DerslikModel>[].obs;
+  RxList<dynamic> filteredDerslikList = <dynamic>[].obs;
+  RxList<ZamanModel> zamanList = <ZamanModel>[].obs;
+  RxBool isLoaded = false.obs;
+
+  int idSinav = 0; 
 
   @override
   void initState() {
     super.initState();
-    init();
-  }
 
-  init() async{
-    Future.wait([
-      sinavListController.getData(),
-      zamanListController.getData(),
-      derslikListController.getData(),
-      kilitliHucreListController.getData()
-    ]).then((value){
-      for(var derslik in derslikListController.dataList){
-        filteredDerslikList.add(derslik);
+    for(var derslik in widget.derslikList){
+      filteredDerslikList.add(derslik);
+    }
+
+    for (int i = 0; i < widget.sinavBilgi.gun!; i++) {
+      DateTime tarih = widget.sinavBilgi.tarih!.add(Duration(days: i));
+      List<IdAdi> periyotList = [];
+
+      for (int j = 0; j < widget.sinavBilgi.periyot!; j++) {
+        periyotList.add(IdAdi(id: j+1, adi: "${j+1}"));
       }
-    });
+
+      ZamanModel zamanModel = ZamanModel(
+        id: i+1,
+        tarih: tarih,
+        periyot: periyotList,
+      );
+
+      zamanList.add(zamanModel);
+    }
+
+    isLoaded(true);
   }
 
   @override
@@ -65,8 +89,8 @@ class _AnalizViewState extends State<AnalizView> {
 
   buildBody(){
     return Obx((){
-      if(sinavListController.isLoading.value == 0 || zamanListController.isLoading.value == 0 || derslikListController.isLoading.value == 0){
-        return const SizedBox();
+      if(isLoaded.value == false){
+        return Container();
       }
 
       return Column(
@@ -76,16 +100,19 @@ class _AnalizViewState extends State<AnalizView> {
             children: [
               ElevatedButton(
                 onPressed: (){
-                  for(var sinav in sinavListController.dataList){
-                    sinav.hucre?.clear();
+                  //TODO:: yerlestir endpointi'ne istek atılacak sıfırlamak için.
+                  for(var sinav in widget.sorumluDerslerList){
+                    sinav.idDerslik = 0;
+                    sinav.tarih = DateTime(1900, 1, 1);
+                    sinav.periyot = "";
                   }
                   setState(() {});
                 }, 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   shape: RoundedRectangleBorder(
-                     borderRadius: BorderRadius.circular(6),
-                   ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
                 child: const Text('Tümünü Temizle', style: TextStyle(color: Colors.white)),
               ),
@@ -100,17 +127,15 @@ class _AnalizViewState extends State<AnalizView> {
                     filteredDerslikList.clear();
 
                     if(value.isEmpty){
-                      filteredDerslikList.addAll(derslikListController.dataList);
+                      filteredDerslikList.addAll(widget.derslikList);
                     }else{
                       Set<int> derslikIds = {};
-                      for (var sinav in sinavListController.dataList) {
+                      for (var sinav in widget.sorumluDerslerList) {
                         if (sinav.adi!.toLowerCase().contains(value.toLowerCase())) {
-                          for (var hucre in sinav.hucre!) {
-                            derslikIds.add(hucre.derslikId!);
-                          }
+                          derslikIds.add(sinav.idDerslik!);
                         }
                       }
-                      for (var derslik in derslikListController.dataList) {
+                      for (var derslik in widget.derslikList) {
                         if (derslikIds.contains(derslik.id)) {
                           filteredDerslikList.add(derslik);
                         }
@@ -124,80 +149,106 @@ class _AnalizViewState extends State<AnalizView> {
               ),
             ],
           ),
+
           const SizedBox(height: 10),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                buildSinavlar(),
-                const SizedBox(width: 10),
-                buildZamanDerslikTablo()
-              ],
-            ),
-          ),
+
+          buildSinavlar(),
+
+          const SizedBox(height: 10),
+
+          buildZamanDerslikTablo()
         ],
       );
     });
   }
 
-  buildSinavlar(){
-    return Expanded(
-      flex: 1,
-      child: ListView.builder(
-        itemCount: sinavListController.dataList.length,
-        itemBuilder: (context, i){
-          final sinav = sinavListController.dataList[i];
-          return Draggable<SinavModel>(
-            data: sinav,
-            feedback: Material(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                width: 150,
-                color: Color(int.parse('0xFF${sinav.renk}')),
-                child: Text(sinav.adi ?? "", style: const TextStyle(color: Colors.white)),
-              ),
-            ),
-            childWhenDragging: Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-              ),
-              child: Text(
-                sinav.adi ?? "",
-                style: const TextStyle(color: Colors.grey),
-              ),
-            ),
-            child: Card(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-                side: BorderSide(
-                  color: Colors.grey.withOpacity(0.5),
-                  width: 1,
+  Widget buildSinavlar() {
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.indigo,
+          width: 1
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.start,
+        spacing: 8.0,
+        runSpacing: 8.0,
+        children: [
+          // Bu şekilde where kullanmamızın nedeni tabloya yerleştirilmemiş olan dersi üst listede gösteriyoruz.
+          // Ders zaten yerleştirildiyse o alanda olmayacak. Ders yerleşimden kalkarsa tekrar geliyor.
+          for (var ders in widget.sorumluDerslerList.where((e) => e.idDerslik == 0 && e.tarih!.year == 1900 && e.periyot == ""))
+            Draggable(
+              data: ders,
+              feedback: Material(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  width: 150,
+                  decoration: BoxDecoration(
+                    color: Color(int.parse('0xFF${ders.renk}')),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      ders.adi ?? "",
+                      style: const TextStyle(color: Colors.black),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ),
-              child: ListTile(
-                tileColor: Colors.transparent,
-                title: Row(
+              childWhenDragging: Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  ders.adi ?? "",
+                  overflow: TextOverflow.ellipsis,
+                  style: GeneralSettings.textFormFieldStyle(),
+                ),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    buildSinavPullDownButon(ogrenciList: sinav.ogrenci ?? [], ogretmenList: sinav.ogretmen ?? []),
+                    buildSinavPullDownButon(idDers: ders.id!),
                     Text(
-                      sinav.adi ?? "", 
+                      ders.adi ?? "",
                       overflow: TextOverflow.ellipsis,
-                      style: GeneralSettings.textFormFieldStyle()
+                      style: GeneralSettings.textFormFieldStyle(),
                     ),
                   ],
                 ),
               ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
 
-  buildSinavPullDownButon({required List<IdAdi> ogrenciList, required List<Ogretmen> ogretmenList}){
+  buildSinavPullDownButon({required int idDers}){
     return PullDownButton(
       routeTheme: CustomFormDecoration.pullDownMenuRouteTheme(),
       itemBuilder: (context) => [
@@ -205,14 +256,46 @@ class _AnalizViewState extends State<AnalizView> {
           title: 'Öğrenciler',
           icon: CupertinoIcons.person_2,
           onTap: () async {
-            await FormRouterService.ogrencilerListForm(ogrenciList);
+            List<dynamic> ogrenciList = await widget.getOgrenciListFunc();
+
+            await showDialog(
+              barrierDismissible: false,
+              context: Get.context!,
+              builder: (context) {
+                return AlertDialog(
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                  content: OgrencilerListForm(
+                    ogrenciList: ogrenciList,
+                    idDers: idDers,
+                  ),
+                );
+              },
+            );
           },
         ),
         PullDownMenuItem(
           title: 'Öğretmenler',
           icon: CupertinoIcons.group,
           onTap: () async {
-            await FormRouterService.ogretmenlerListForm(ogretmenList);
+            List<dynamic> ogretmenList = await widget.getOgretmenListFunc();
+
+            await showDialog(
+              barrierDismissible: false,
+              context: Get.context!,
+              builder: (context) {
+                return AlertDialog(
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8))
+                  ),
+                  content: OgretmenlerListForm(
+                    ogretmenList: ogretmenList,
+                    idDers: idDers,
+                  ),
+                );
+              },
+            );
           },
         ),
       ],
@@ -257,12 +340,12 @@ class _AnalizViewState extends State<AnalizView> {
                 TableRow(
                   children: [
                     TableCell(child: Container()),
-                    for (var zaman in zamanListController.dataList)
+                    for (var zaman in zamanList)
                       TableCell(
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Text(
-                            zaman.adi ?? "",
+                            DateFormat('dd MMMM - EEEE', 'tr').format(zaman.tarih!),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -272,7 +355,7 @@ class _AnalizViewState extends State<AnalizView> {
                 TableRow(
                   children: [
                     TableCell(child: Container()),
-                    for (var zaman in zamanListController.dataList)
+                    for (var zaman in zamanList)
                       TableCell(
                         child: Row(
                           children: [
@@ -323,7 +406,7 @@ class _AnalizViewState extends State<AnalizView> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          for (var zaman in zamanListController.dataList)
+                          for (var zaman in zamanList)
                             Builder(
                               builder: (context) {
                                 return Row(
@@ -336,77 +419,68 @@ class _AnalizViewState extends State<AnalizView> {
                                               right: BorderSide(color: Colors.black, width: 1),
                                             ),
                                           ),
-                                          child: DragTarget<SinavModel>(
-                                            onAcceptWithDetails: (details) {
+                                          child: DragTarget(
+                                            onAcceptWithDetails: (details) async{
+                                              List<dynamic> ogrenciList = await widget.getOgrenciListFunc();
+                                              List<dynamic> ogrenciBlokZamanList = await widget.getOgrenciBlokZamanListFunc();
+
                                               setState(() {
-                                                SinavModel draggedSinav = details.data;
+                                                dynamic draggedSinav = details.data;
                 
-                                                var model = sinavListController.dataList.firstWhere((e) => e.id == draggedSinav.id);
+                                                var model = widget.sorumluDerslerList.firstWhere((e) => e.id == draggedSinav.id);
                 
-                                                var yeniHucre = Hucre(
-                                                  derslikId: derslik.id,
-                                                  zamanId: zaman.id,
-                                                  periyotId: periyot.id,
+                                                var yeniHucre = HucreModel(
+                                                  tarih: zaman.tarih,
+                                                  idDerslik: derslik.id,
+                                                  idPeriyot: periyot.id,
                                                 );
+
+                                                int checkPeriyot = 0;
+
+                                                for(var i = 0; i < model.uzunluk; i++){
+                                                  checkPeriyot = yeniHucre.idPeriyot! + i;
+                                                }
 
                                                 bool ogrenciVar = false;
                                                 bool ogretmenVar = false;
 
                                                 List<String> cakisanOgrenciList = [];
-                                                List<String> cakisanOgretmenList = [];
-                
-                                                for (var otherSinav in sinavListController.dataList) {
-                                                  ogrenciVar = otherSinav.hucre?.any((hucre) =>
-                                                    hucre.zamanId == yeniHucre.zamanId &&
-                                                    hucre.periyotId == yeniHucre.periyotId &&
-                                                    otherSinav.ogrenci?.any((ogrenci) =>
-                                                      model.ogrenci?.any((modelOgrenci) => modelOgrenci.id == ogrenci.id) == true
-                                                    ) == true
-                                                  ) == true;
+                                                List<String> cakisanOgretmenList = [];  
 
-                                                  if (ogrenciVar) {
-                                                    for (var ogrenci in otherSinav.ogrenci ?? []) {
-                                                      if (model.ogrenci?.any((modelOgrenci) => modelOgrenci.id == ogrenci.id) == true) {
-                                                        cakisanOgrenciList.add(ogrenci.adi);
+                                                for(var ogrenciBlok in ogrenciBlokZamanList){
+                                                  for(var ogrenci in ogrenciList.where((e) => e.id == ogrenciBlok.idOgrenci && e.idDers == model.id)){
+                                                    if(
+                                                      ogrenciBlok.tarih == yeniHucre.tarih &&
+                                                      ogrenciBlok.periyot == yeniHucre.idPeriyot
+                                                    ){
+                                                      ogrenciVar = true;
+                                                      cakisanOgrenciList.add(ogrenci.adi);
+                                                    }
+                                                    else{
+                                                      // Öğrenci blok güncelleme
+                                                      var ogrenciBlokModel = ogrenciBlokZamanList.firstWhere((e) => e.idOgrenci == ogrenci.id);
+
+                                                      if(ogrenciBlokModel != null){
+                                                        ogrenciBlokModel.tarih = yeniHucre.tarih;
+                                                        ogrenciBlokModel.periyot = yeniHucre.idPeriyot;
+                                                      }
+                                                      else{
+                                                        var ogrenciBlokAddModel = {
+                                                          'id_ogrenci': ogrenci.id,
+                                                          'tarih': yeniHucre.tarih,
+                                                          'periyot': yeniHucre.idPeriyot,
+                                                        };
+
+                                                        ogrenciBlokZamanList.add(ogrenciBlokAddModel);
                                                       }
                                                     }
                                                   }
-
-                                                  ogretmenVar = otherSinav.hucre?.any((hucre) =>
-                                                    hucre.zamanId == yeniHucre.zamanId &&
-                                                    hucre.periyotId == yeniHucre.periyotId &&
-                                                    otherSinav.ogretmen?.any((ogretmen) =>
-                                                      model.ogretmen?.any((modelOgretmen) => modelOgretmen.id == ogretmen.id) == true &&
-                                                      ogretmen.gozetmen == false
-                                                    ) == true
-                                                  ) == true;
-
-                                                  if (ogretmenVar) {
-                                                    for (var ogretmen in otherSinav.ogretmen ?? []) {
-                                                      if (model.ogretmen?.any((modelOgretmen) => modelOgretmen.id == ogretmen.id) == true) {
-                                                        cakisanOgretmenList.add(ogretmen.adi);
-                                                      }
-                                                    }
-                                                  }
-
-                                                  if (ogrenciVar || ogretmenVar) break;
                                                 }
 
-                                                bool kilitli = kilitliHucreListController.dataList.any((kilitliHucre) =>
-                                                  kilitliHucre.derslikId == yeniHucre.derslikId &&
-                                                  kilitliHucre.zamanId == yeniHucre.zamanId &&
-                                                  kilitliHucre.periyotId == yeniHucre.periyotId
-                                                );
+                                                for(var aa in ogrenciBlokZamanList){
+                                                  print(aa.tarih);
+                                                }
 
-                                                var selectedDerslik = derslikListController.dataList.firstWhere((d) => d.id == derslik.id);
-                                                  if (model.ogrenci != null && model.ogrenci!.length > selectedDerslik.kapasite!) {
-                                                    DialogWidget.buildShowAlertDialog(
-                                                      title: "Ekleme Başarısız",
-                                                      text: "${selectedDerslik.adi} adlı derslikte ${selectedDerslik.kapasite!} öğrenci kapasitesi bulunmaktadır.\nEklemeye çalıştığınız sınavda ${model.ogrenci!.length} öğrenci bulunduğu için ekleme yapılamaz."
-                                                    );
-                                                    return;
-                                                  }
-                
                                                 if (ogrenciVar) {
                                                   DialogWidget.buildShowAlertDialog(
                                                     title: "Ekleme Başarısız",
@@ -414,14 +488,15 @@ class _AnalizViewState extends State<AnalizView> {
                                                   );
                                                   return;
                                                 }
+
+
                                                 
-                                                if (ogretmenVar) {
-                                                  DialogWidget.buildShowAlertDialog(
-                                                    title: "Ekleme Başarısız",
-                                                    text: "Bu periyot ve zaman diliminde ${cakisanOgretmenList.join(', ')} adlı öğretmen zaten başka bir derslikte eklenmiş."
-                                                  );
-                                                  return;
-                                                }
+
+                                                bool kilitli = widget.derslikBlokZamanList.any((kilitliHucre) =>
+                                                  kilitliHucre.tarih == yeniHucre.tarih &&
+                                                  kilitliHucre.idDerslik == yeniHucre.idDerslik &&
+                                                  kilitliHucre.periyot == yeniHucre.idPeriyot
+                                                );
 
                                                 if (kilitli) {
                                                   DialogWidget.buildShowAlertDialog(
@@ -430,8 +505,29 @@ class _AnalizViewState extends State<AnalizView> {
                                                   );
                                                   return;
                                                 }
+
+                                                // var selectedDerslik = widget.derslikList.firstWhere((d) => d.id == derslik.id);
+
+                                                // if (model.ogrenci != null && model.ogrenci!.length > selectedDerslik.kapasite!) {
+                                                //   DialogWidget.buildShowAlertDialog(
+                                                //     title: "Ekleme Başarısız",
+                                                //     text: "${selectedDerslik.adi} adlı derslikte ${selectedDerslik.kapasite!} öğrenci kapasitesi bulunmaktadır.\nEklemeye çalıştığınız sınavda ${model.ogrenci!.length} öğrenci bulunduğu için ekleme yapılamaz."
+                                                //   );
+                                                //   return;
+                                                // }
                 
-                                                model.hucre?.add(yeniHucre);
+                                        
+                                                
+
+                                                model.tarih = yeniHucre.tarih;
+                                                model.idDerslik = yeniHucre.idDerslik;
+                                                model.periyot = yeniHucre.idPeriyot.toString();
+
+                                                // TODO: yerlestir post metodu eklenecek.
+
+                                                setState(() { });
+
+                                                print(json.encode(model));
                                               });
                                             },
                                             onWillAcceptWithDetails: (data) {
@@ -449,10 +545,10 @@ class _AnalizViewState extends State<AnalizView> {
                                                       ),
                                                     )
                                                   : buildSinavHucreAlan(
-                                                      Hucre(
-                                                        derslikId: derslik.id,
-                                                        zamanId: zaman.id,
-                                                        periyotId: periyot.id,
+                                                      HucreModel(
+                                                        tarih: zaman.tarih,
+                                                        idDerslik: derslik.id,
+                                                        idPeriyot: periyot.id,
                                                       ),
                                                     ),
                                               );
@@ -476,25 +572,28 @@ class _AnalizViewState extends State<AnalizView> {
     );
   }
 
-  Widget buildSinavHucreAlan(Hucre model) {
-    final List<KilitliHucreModel> kilitliCells = kilitliHucreListController.dataList;
+  Widget buildSinavHucreAlan(HucreModel model) {
+    final List<dynamic> kilitliCells = widget.derslikBlokZamanList;
 
-    final sinavList = sinavListController.dataList.where(
-      (e) => e.hucre != null &&
-            e.hucre!.any((hucre) =>
-              hucre.derslikId == model.derslikId &&
-              hucre.zamanId == model.zamanId &&
-              hucre.periyotId == model.periyotId
-            ),
+    final sorumluDersList = widget.sorumluDerslerList.where(
+      (e) {
+        final periyotList = e.periyot!.split(',');
+
+        final idPeriyotString = model.idPeriyot.toString();
+
+        return e.idDerslik == model.idDerslik &&
+          e.tarih == model.tarih &&
+          periyotList.contains(idPeriyotString);
+      }
     ).toList();
 
     bool kilitli = kilitliCells.any((kilitliCell) =>
-      kilitliCell.derslikId == model.derslikId &&
-      kilitliCell.zamanId == model.zamanId &&
-      kilitliCell.periyotId == model.periyotId
+      kilitliCell.idDerslik == model.idDerslik &&
+      kilitliCell.tarih == model.tarih &&
+      kilitliCell.periyot == model.idPeriyot
     );
 
-    if (sinavList.isEmpty && !kilitli) {
+    if (sorumluDersList.isEmpty && !kilitli) {
       return Container();
     }
 
@@ -515,19 +614,10 @@ class _AnalizViewState extends State<AnalizView> {
           ),
 
         // Kilitli değilse ve hücrede atanmış sınavlar varsa burada gösteriyoruz.
-        ...sinavList.map((sinav) {
+        ...sorumluDersList.map((sinav) {
           return Expanded(
-            child: Draggable<SinavModel>(
+            child: Draggable(
               data: sinav,
-              onDragStarted: () {
-                setState(() {
-                  sinav.hucre?.removeWhere((e) =>
-                    e.zamanId == model.zamanId &&
-                    e.derslikId == model.derslikId &&
-                    e.periyotId == model.periyotId
-                  );
-                });
-              },
               feedback: Material(
                 child: Container(
                   padding: const EdgeInsets.all(8),

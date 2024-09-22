@@ -38,6 +38,14 @@ get
 2.15
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/get-4.6.6/
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/get-4.6.6/lib/
+http
+3.3
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/http-1.2.2/
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/http-1.2.2/lib/
+http_parser
+2.12
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/http_parser-4.0.2/
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/http_parser-4.0.2/lib/
 intl
 3.0
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/intl-0.19.0/
@@ -102,6 +110,10 @@ test_api
 3.2
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/test_api-0.7.2/
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/test_api-0.7.2/lib/
+typed_data
+2.17
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/typed_data-1.3.2/
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/typed_data-1.3.2/lib/
 vector_math
 2.14
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/vector_math-2.1.4/
@@ -110,6 +122,10 @@ vm_service
 3.3
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/vm_service-14.2.5/
 file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/vm_service-14.2.5/lib/
+web
+3.4
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/web-1.0.0/
+file:///Users/alesiagroup/.pub-cache/hosted/pub.dev/web-1.0.0/lib/
 sky_engine
 3.2
 file:///Users/alesiagroup/Documents/dev/flutter/bin/cache/pkg/sky_engine/

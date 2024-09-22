@@ -9,23 +9,23 @@ String zamanModelToJson(List<ZamanModel> data) => json.encode(List<dynamic>.from
 class ZamanModel {
   ZamanModel({
     this.id,
-    this.adi,
+    this.tarih,
     this.periyot
   });
 
   int? id;
-  String? adi;
+  DateTime? tarih;
   List<IdAdi>? periyot;
 
   factory ZamanModel.fromJson(Map<String, dynamic> json) => ZamanModel(
     id: json["id"],
-    adi: json["adi"] ?? "",
+    tarih: json["tarih"] != null ? DateTime.parse(json["tarih"]) : DateTime.now(),
     periyot: json["periyot"] != null ? List<IdAdi>.from(json["periyot"].map((x) => IdAdi.fromJson(x))) : [],
   );
 
   Map<String, dynamic> toJson() => {
     "id": id,
-    "adi": adi,
+    "tarih": (tarih ?? DateTime.now()).toIso8601String(),
     "periyot": periyot != null ? List<dynamic>.from(periyot!.map((x) => x.toJson())) : [],
   };
 }

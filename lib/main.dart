@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
-import 'package:k12_analiz/modules/analiz/views/analiz_view.dart';
+import 'package:k12_analiz/examples/views/analiz_test_view.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       fallbackLocale: Locale('en', 'UK'),
       defaultTransition: Transition.noTransition,
       debugShowCheckedModeBanner: false,
-      home: AnalizView(),
+      home: AnalizTestView(),
     );
   }
 }
